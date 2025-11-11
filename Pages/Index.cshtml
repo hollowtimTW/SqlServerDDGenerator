@@ -1,707 +1,309 @@
 @page
 @model IndexModel
 @{
-    ViewData["Title"] = "Data Dictionary Generator";
+    ViewData["Title"] = "Home";
 }
 
-<div class="container mt-4">
-    <h1 class="mb-4">
-        <i class="bi bi-database-fill-gear me-2"></i>
-        DATA DICTIONARY GENERATOR
-    </h1>
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">
+            <i class="bi bi-database-fill-gear me-3"></i>
+            SQL SERVER TOOLS
+        </h1>
+        <p class="lead text-muted">選擇一個工具開始使用 / Select a tool to get started</p>
+    </div>
 
-    <!-- 訊息提示區（改為 Toast 風格） -->
-    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;"></div>
-
-    <!-- 連線設定 -->
-    <div class="card mb-3" id="connectionCard">
-        <div class="card-header">
-            <h3><i class="bi bi-plug-fill me-2"></i>DATABASE CONNECTION</h3>
-        </div>
-        <div class="card-body" id="connectionForm">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">
-                        <i class="bi bi-server me-1"></i>Server Instance
-                        <i class="bi bi-info-circle ms-1" style="font-size: 0.75rem; color: var(--accent-color); cursor: help;" 
-                           title="Format: localhost / 127.0.0.1,1433 / server\instance&#13;You can specify port: localhost,1433"></i>
-                    </label>
-                    <input type="text" class="form-control" id="serverName" placeholder="localhost / 127.0.0.1,1433 / server\instance" required />
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <label class="form-label"><i class="bi bi-shield-lock me-1"></i>Authentication Mode</label>
-                    <select class="form-select" id="authTypeSelect" onchange="toggleAuthFields()">
-                        <option value="Windows">Windows Authentication</option>
-                        <option value="SA">SQL Server Authentication</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="sqlAuthFields" style="display: none;">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label"><i class="bi bi-person-fill me-1"></i>Username</label>
-                        <input type="text" class="form-control" id="username" placeholder="sa" />
+    <!-- Features Grid -->
+    <div class="row g-4">
+        <!-- Data Dictionary Generator Card -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-file-earmark-text-fill"></i>
                     </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label"><i class="bi bi-key-fill me-1"></i>Password</label>
-                        <input type="password" class="form-control" id="password" placeholder="••••••••" />
+                    <h3 class="card-title h5 mb-3">Data Dictionary Generator</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        自動產生資料庫的 Data Dictionary 文件（Markdown 格式），包含完整的資料表結構、欄位資訊及說明。
+                    </p>
+                    <div class="mt-3">
+                        <a href="/DDGenerator" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            開始使用
+                        </a>
                     </div>
                 </div>
-
-                <div class="mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="trustCertificate" checked>
-                        <label class="form-check-label" for="trustCertificate">
-                            Trust Server Certificate
-                        </label>
-                        <div class="form-text">Enable for self-signed certificates or dev environments</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="rememberConnection" checked>
-                    <label class="form-check-label" for="rememberConnection">
-                        <i class="bi bi-bookmark-fill me-1"></i>Remember connection settings
-                    </label>
-                </div>
-            </div>
-
-            <button type="button" class="btn btn-primary" id="btnTestConnection" onclick="testConnection()">
-                <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerTest"></span>
-                <i class="bi bi-link-45deg me-1"></i>
-                CONNECT & LOAD DATABASES
-            </button>
-            <button type="button" class="btn btn-secondary ms-2" onclick="clearConnectionInfo()">
-                <i class="bi bi-trash3 me-1"></i>
-                CLEAR MEMORY
-            </button>
-        </div>
-        
-        <!-- 收合後的簡化顯示 -->
-        <div class="card-body d-none" id="connectionSummary">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="badge bg-success me-2">
-                        <i class="bi bi-check-circle-fill me-1"></i>CONNECTED
+                <div class="feature-status">
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle-fill me-1"></i>可用
                     </span>
-                    <strong id="connectedServer"></strong>
-                    <span class="text-muted ms-2" id="connectedAuth"></span>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showConnectionForm()">
-                    <i class="bi bi-arrow-clockwise me-1"></i>
-                    RECONFIGURE
-                </button>
             </div>
         </div>
-    </div>
 
-    <!-- 選擇資料庫 -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h3><i class="bi bi-database me-2"></i>STEP 1: SELECT DATABASE</h3>
-        </div>
-        <div class="card-body">
-            <div class="mb-3">
-                <label class="form-label"><i class="bi bi-collection me-1"></i>Available Databases (Permission Filtered)</label>
-                <select class="form-select" id="databaseSelect" onchange="loadTables()" disabled>
-                    <option value="">-- Connect to server first --</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <!-- 選擇資料表 -->
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h3><i class="bi bi-table me-2"></i>STEP 2: SELECT TABLES</h3>
-            <div>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTables()">
-                    <i class="bi bi-check-all me-1"></i>SELECT ALL
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary ms-1" onclick="deselectAllTables()">
-                    <i class="bi bi-x-lg me-1"></i>DESELECT ALL
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="tablesContainer" class="row">
-                <p class="text-muted">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Select a database to load tables
-                </p>
-            </div>
-            <div class="mt-3">
-                <button type="button" class="btn btn-success" id="btnGenerate" onclick="generateDD()" disabled>
-                    <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerGenerate"></span>
-                    <i class="bi bi-file-earmark-text me-1"></i>
-                    GENERATE DICTIONARY
-                </button>
-                <button type="button" class="btn btn-secondary ms-2" onclick="resetAll()">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>
-                    RESET
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 完成 -->
-    <div class="card mb-4 d-none" id="resultCard">
-        <div class="card-header" style="background: var(--gradient-success); color: white;">
-            <h3><i class="bi bi-check-circle-fill me-2"></i>GENERATION COMPLETE</h3>
-        </div>
-        <div class="card-body">
-            <p class="lead mb-3" id="resultMessage" style="color: white; font-weight: 600;"></p>
-            
-            <div class="mb-4">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-file-earmark-code me-2" style="color: rgba(255, 255, 255, 0.7);"></i>
-                    <span style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.7);">Filename:</span>
+        <!-- Placeholder Card 1 - Coming Soon -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100 coming-soon">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-magic"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">AI 欄位說明生成器</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        使用 AI 技術自動為資料表欄位生成詳細的說明文字，提升文件完整性。
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            即將推出
+                        </button>
+                    </div>
                 </div>
-                <code id="resultFileName" style="font-size: 0.9rem; background: rgba(255, 255, 255, 0.1); color: #a8dadc; padding: 0.5rem 1rem; border-radius: 6px; display: inline-block;"></code>
+                <div class="feature-status">
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock-fill me-1"></i>開發中
+                    </span>
+                </div>
             </div>
-            
-            <div class="d-grid gap-2 d-md-flex">
-                <button type="button" class="btn btn-primary btn-lg" onclick="downloadMarkdown()">
-                    <i class="bi bi-download me-2"></i>
-                    DOWNLOAD .MD FILE
-                </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="resetAll()" style="background: rgba(255, 255, 255, 0.1); color: white; border-color: rgba(255, 255, 255, 0.3);">
-                    <i class="bi bi-plus-circle me-1"></i>
-                    NEW GENERATION
-                </button>
+        </div>
+
+        <!-- Placeholder Card 2 - Coming Soon -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100 coming-soon">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-bar-chart-line-fill"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">資料庫分析工具</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        分析資料庫結構，提供效能優化建議、索引分析及關聯圖表視覺化。
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            即將推出
+                        </button>
+                    </div>
+                </div>
+                <div class="feature-status">
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock-fill me-1"></i>開發中
+                    </span>
+                </div>
             </div>
-            
-            <div class="alert alert-info mt-4 mb-0" style="background: rgba(138, 180, 248, 0.15); border-color: var(--accent-color); color: var(--accent-color);">
-                <i class="bi bi-lightbulb-fill me-2"></i>
-                <strong>TIP:</strong> Click download button to choose save location and customize filename
+        </div>
+
+        <!-- Placeholder Card 3 - Coming Soon -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100 coming-soon">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-table"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">Schema 比較工具</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        比較兩個資料庫的結構差異，自動產生同步用的 SQL 指令稿。
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            即將推出
+                        </button>
+                    </div>
+                </div>
+                <div class="feature-status">
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock-fill me-1"></i>開發中
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder Card 4 - Coming Soon -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100 coming-soon">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-code-slash"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">SQL 產生器</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        根據資料表結構自動產生常用的 CRUD SQL 語句及預存程序範本。
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            即將推出
+                        </button>
+                    </div>
+                </div>
+                <div class="feature-status">
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock-fill me-1"></i>開發中
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder Card 5 - Coming Soon -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100 coming-soon">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">資料庫安全檢查</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        檢查資料庫的安全設定，包含權限配置、加密狀態及最佳實踐建議。
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            即將推出
+                        </button>
+                    </div>
+                </div>
+                <div class="feature-status">
+                    <span class="badge bg-warning">
+                        <i class="bi bi-clock-fill me-1"></i>開發中
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="info-card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-2">
+                                <i class="bi bi-lightbulb-fill me-2" style="color: var(--warning-color);"></i>
+                                持續開發中
+                            </h4>
+                            <p class="mb-0 text-muted">
+                                我們正在不斷添加新功能以提升您的開發效率。如有任何建議或需求，歡迎與我們聯繫！
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <a href="https://github.com/hollowtimTW/SqlServerDDGenerator" target="_blank" class="btn btn-outline-primary">
+                                <i class="bi bi-github me-2"></i>
+                                訪問 GitHub
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    /* Toast 通知樣式 - 精緻小巧版 + 效能優化 */
-    .toast-notification {
-        background: linear-gradient(135deg, rgba(30, 33, 57, 0.98), rgba(42, 46, 75, 0.98));
+    /* Feature Card Styles */
+    .feature-card {
+        background: var(--bg-card);
         backdrop-filter: blur(20px);
-        border-radius: 10px;
-        padding: 0.65rem 1rem;
-        margin-bottom: 8px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        max-width: 320px;
-        min-width: 240px;
-        position: relative;
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: var(--shadow-md);
         overflow: hidden;
-        will-change: transform, opacity;
-        transform: translateZ(0);
+        transition: all 0.3s ease;
+        position: relative;
+        cursor: pointer;
     }
 
-    .toast-notification::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 3px;
-        background: linear-gradient(180deg, var(--toast-color), transparent);
+    .feature-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--accent-color);
+        box-shadow: 0 12px 48px rgba(138, 180, 248, 0.2);
     }
 
-    .toast-notification.success {
-        --toast-color: #81c995;
+    .feature-card.coming-soon {
+        opacity: 0.7;
     }
 
-    .toast-notification.danger {
-        --toast-color: #f48771;
+    .feature-card.coming-soon:hover {
+        opacity: 0.85;
+        transform: translateY(-4px);
     }
 
-    .toast-notification.warning {
-        --toast-color: #ffd166;
-    }
-
-    .toast-notification.info {
-        --toast-color: var(--accent-color);
-    }
-
-    .toast-content {
+    .feature-icon {
+        width: 64px;
+        height: 64px;
+        background: var(--gradient-primary);
+        border-radius: 16px;
         display: flex;
         align-items: center;
-        flex: 1;
-        color: #e8eaed;
-        font-size: 0.75rem;
-        letter-spacing: 0.3px;
-        font-weight: 500;
-    }
-
-    .toast-icon {
-        margin-right: 8px;
-        font-size: 0.95rem;
-        color: var(--toast-color);
-        filter: drop-shadow(0 0 4px var(--toast-color));
-    }
-
-    .toast-close {
-        background: rgba(255, 255, 255, 0.05);
-        border: none;
-        color: rgba(255, 255, 255, 0.5);
-        font-size: 1rem;
-        cursor: pointer;
-        padding: 2px 6px;
-        margin-left: 0.75rem;
-        transition: all 0.2s;
-        border-radius: 4px;
-        line-height: 1;
-    }
-
-    .toast-close:hover {
-        background: rgba(255, 255, 255, 0.1);
+        justify-content: center;
+        font-size: 2rem;
         color: white;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
     }
 
-    @@keyframes slideInRight {
+    .feature-card.coming-soon .feature-icon {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+        box-shadow: none;
+    }
+
+    .feature-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .info-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .display-4 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Animation */
+    .feature-card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .feature-card:nth-child(1) { animation-delay: 0.1s; }
+    .feature-card:nth-child(2) { animation-delay: 0.2s; }
+    .feature-card:nth-child(3) { animation-delay: 0.3s; }
+    .feature-card:nth-child(4) { animation-delay: 0.4s; }
+    .feature-card:nth-child(5) { animation-delay: 0.5s; }
+    .feature-card:nth-child(6) { animation-delay: 0.6s; }
+
+    @@keyframes fadeInUp {
         from {
-            transform: translateX(400px);
             opacity: 0;
+            transform: translateY(30px);
         }
         to {
-            transform: translateX(0);
             opacity: 1;
+            transform: translateY(0);
         }
     }
 
-    @@keyframes fadeOut {
-        to {
-            opacity: 0;
-            transform: translateX(400px);
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .display-4 {
+            font-size: 2rem;
         }
-    }
-
-    .toast-notification.hiding {
-        animation: fadeOut 0.3s ease-out forwards;
+        
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            font-size: 1.75rem;
+        }
     }
 </style>
-
-<script>
-    // LocalStorage 鍵名
-    const STORAGE_KEY = 'sqlServerConnectionInfo';
-    let currentConnectionInfo = null;
-    let currentMarkdownContent = '';
-    let currentFileName = '';
-
-    // 頁面載入時恢復連線資訊
-    document.addEventListener('DOMContentLoaded', function() {
-        loadConnectionInfo();
-        toggleAuthFields();
-    });
-
-    // 顯示 Toast 訊息
-    function showMessage(message, type = 'info') {
-        const container = document.getElementById('toastContainer');
-        
-        // 建立 Toast 元素
-        const toast = document.createElement('div');
-        toast.className = `toast-notification ${type}`;
-        
-        // 圖示對應
-        const icons = {
-            success: 'bi-check-circle-fill',
-            danger: 'bi-x-circle-fill',
-            warning: 'bi-exclamation-triangle-fill',
-            info: 'bi-info-circle-fill'
-        };
-        
-        toast.innerHTML = `
-            <div class="toast-content">
-                <i class="bi ${icons[type]} toast-icon"></i>
-                <span>${message}</span>
-            </div>
-            <button class="toast-close" onclick="closeToast(this)">×</button>
-        `;
-        
-        container.appendChild(toast);
-        
-        // 5秒後自動移除
-        setTimeout(() => {
-            closeToast(toast.querySelector('.toast-close'));
-        }, 5000);
-    }
-
-    // 關閉 Toast
-    function closeToast(button) {
-        const toast = button.parentElement;
-        toast.classList.add('hiding');
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }
-
-    // 隱藏訊息（保留向後相容）
-    function hideMessage() {
-        // 不再需要，保留空函數避免錯誤
-    }
-
-    // 收合連線表單
-    function collapseConnectionForm() {
-        document.getElementById('connectionForm').classList.add('d-none');
-        document.getElementById('connectionSummary').classList.remove('d-none');
-        
-        // 顯示連線資訊
-        const authType = document.getElementById('authTypeSelect').value;
-        document.getElementById('connectedServer').textContent = document.getElementById('serverName').value;
-        document.getElementById('connectedAuth').textContent = `(${authType === 'Windows' ? 'Windows Auth' : 'SQL Auth'})`;
-    }
-
-    // 顯示連線表單
-    function showConnectionForm() {
-        document.getElementById('connectionForm').classList.remove('d-none');
-        document.getElementById('connectionSummary').classList.add('d-none');
-        
-        // 重置其他區域
-        document.getElementById('databaseSelect').value = '';
-        document.getElementById('databaseSelect').disabled = true;
-        document.getElementById('tablesContainer').innerHTML = '<p class="text-muted"><i class="bi bi-info-circle me-1"></i>Select a database to load tables</p>';
-        document.getElementById('btnGenerate').disabled = true;
-        document.getElementById('resultCard').classList.add('d-none');
-    }
-
-    // 測試連線
-    async function testConnection() {
-        const btn = document.getElementById('btnTestConnection');
-        const spinner = document.getElementById('spinnerTest');
-        
-        // 收集連線資訊
-        currentConnectionInfo = {
-            serverName: document.getElementById('serverName').value.trim(),
-            authType: document.getElementById('authTypeSelect').value,
-            username: document.getElementById('username').value.trim(),
-            password: document.getElementById('password').value,
-            trustServerCertificate: document.getElementById('trustCertificate').checked
-        };
-
-        // 驗證必填欄位
-        if (!currentConnectionInfo.serverName) {
-            showMessage('⚠️ Server name is required', 'danger');
-            return;
-        }
-
-        if (currentConnectionInfo.authType === 'SA' && !currentConnectionInfo.username) {
-            showMessage('⚠️ Username is required for SQL Authentication', 'danger');
-            return;
-        }
-
-        // 顯示載入狀態
-        btn.disabled = true;
-        spinner.classList.remove('d-none');
-
-        try {
-            const response = await fetch('?handler=TestConnection', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
-                },
-                body: JSON.stringify(currentConnectionInfo)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showMessage('✓ Connection successful!', 'success');
-                
-                // 填充資料庫列表
-                const dbSelect = document.getElementById('databaseSelect');
-                dbSelect.innerHTML = '<option value="">-- Select a database --</option>';
-                
-                if (result.databases && result.databases.length > 0) {
-                    result.databases.forEach(db => {
-                        const option = document.createElement('option');
-                        option.value = db;
-                        option.textContent = db;
-                        dbSelect.appendChild(option);
-                    });
-                    dbSelect.disabled = false;
-                    
-                    // 收合連線表單
-                    collapseConnectionForm();
-                } else {
-                    showMessage('⚠️ No accessible databases found. Check permissions.', 'warning');
-                }
-
-                // 儲存連線資訊
-                saveConnectionInfo();
-            } else {
-                showMessage('✗ ' + result.message, 'danger');
-            }
-        } catch (error) {
-            showMessage('✗ Connection failed: ' + error.message, 'danger');
-            console.error('Error:', error);
-        } finally {
-            btn.disabled = false;
-            spinner.classList.add('d-none');
-        }
-    }
-
-    // 載入資料表
-    async function loadTables() {
-        const databaseName = document.getElementById('databaseSelect').value;
-        
-        if (!databaseName) {
-            document.getElementById('tablesContainer').innerHTML = '<p class="text-muted"><i class="bi bi-info-circle me-1"></i>Select a database to load tables</p>';
-            document.getElementById('btnGenerate').disabled = true;
-            return;
-        }
-
-        try {
-            const requestData = {
-                ...currentConnectionInfo,
-                databaseName: databaseName
-            };
-
-            const response = await fetch('?handler=GetTables', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
-                },
-                body: JSON.stringify(requestData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showMessage(`✓ Loaded ${result.tables.length} tables`, 'success');
-                displayTables(result.tables);
-                document.getElementById('btnGenerate').disabled = false;
-            } else {
-                showMessage('✗ ' + result.message, 'danger');
-            }
-        } catch (error) {
-            showMessage('✗ Failed to load tables: ' + error.message, 'danger');
-            console.error('Error:', error);
-        }
-    }
-
-    // 顯示資料表列表
-    function displayTables(tables) {
-        const container = document.getElementById('tablesContainer');
-        
-        if (!tables || tables.length === 0) {
-            container.innerHTML = '<p class="text-muted"><i class="bi bi-inbox me-1"></i>No tables found in this database</p>';
-            return;
-        }
-
-        container.innerHTML = '';
-        tables.forEach(table => {
-            const col = document.createElement('div');
-            col.className = 'col-md-4 mb-2';
-            
-            const checkDiv = document.createElement('div');
-            checkDiv.className = 'form-check';
-            
-            const checkbox = document.createElement('input');
-            checkbox.className = 'form-check-input table-checkbox';
-            checkbox.type = 'checkbox';
-            checkbox.value = table.fullName;
-            checkbox.id = `table_${table.fullName.replace(/\./g, '_')}`;
-            
-            const label = document.createElement('label');
-            label.className = 'form-check-label';
-            label.htmlFor = checkbox.id;
-            label.innerHTML = `<i class="bi bi-table me-1"></i>${table.fullName}`;
-            
-            checkDiv.appendChild(checkbox);
-            checkDiv.appendChild(label);
-            col.appendChild(checkDiv);
-            container.appendChild(col);
-        });
-    }
-
-    // 產生 DD 文件
-    async function generateDD() {
-        const btn = document.getElementById('btnGenerate');
-        const spinner = document.getElementById('spinnerGenerate');
-        
-        // 收集選中的資料表
-        const selectedTables = Array.from(document.querySelectorAll('.table-checkbox:checked'))
-            .map(cb => cb.value);
-
-        if (selectedTables.length === 0) {
-            showMessage('⚠️ Please select at least one table', 'danger');
-            return;
-        }
-
-        const requestData = {
-            ...currentConnectionInfo,
-            databaseName: document.getElementById('databaseSelect').value,
-            selectedTables: selectedTables
-        };
-
-        btn.disabled = true;
-        spinner.classList.remove('d-none');
-
-        try {
-            const response = await fetch('?handler=Generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
-                },
-                body: JSON.stringify(requestData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                showMessage('✓ ' + result.message, 'success');
-                
-                // 儲存 markdown 內容和檔名供下載使用
-                currentMarkdownContent = result.markdown;
-                currentFileName = result.fileName;
-                
-                // 顯示結果
-                document.getElementById('resultMessage').textContent = result.message;
-                document.getElementById('resultFileName').textContent = result.fileName;
-                
-                document.getElementById('resultCard').classList.remove('d-none');
-                
-                // 滾動到結果區
-                document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
-            } else {
-                showMessage('✗ ' + result.message, 'danger');
-            }
-        } catch (error) {
-            showMessage('✗ Generation failed: ' + error.message, 'danger');
-            console.error('Error:', error);
-        } finally {
-            btn.disabled = false;
-            spinner.classList.add('d-none');
-        }
-    }
-
-    // 下載 Markdown 檔案（讓使用者選擇儲存位置）
-    function downloadMarkdown() {
-        const blob = new Blob([currentMarkdownContent], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        a.href = url;
-        a.download = currentFileName;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        
-        // 清理
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
-        
-        showMessage('⬇ Downloading file, choose your save location...', 'success');
-    }
-
-    // 全選資料表
-    function selectAllTables() {
-        document.querySelectorAll('.table-checkbox').forEach(cb => cb.checked = true);
-    }
-
-    // 取消全選
-    function deselectAllTables() {
-        document.querySelectorAll('.table-checkbox').forEach(cb => cb.checked = false);
-    }
-
-    // 重新開始
-    function resetAll() {
-        showConnectionForm();
-        hideMessage();
-        
-        // 滾動到頂部
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // 儲存連線資訊到 LocalStorage
-    function saveConnectionInfo() {
-        const rememberCheckbox = document.getElementById('rememberConnection');
-        
-        if (rememberCheckbox && rememberCheckbox.checked) {
-            const connectionInfo = {
-                serverName: document.getElementById('serverName').value,
-                authType: document.getElementById('authTypeSelect').value,
-                username: document.getElementById('username').value,
-                trustCertificate: document.getElementById('trustCertificate').checked
-            };
-            
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionInfo));
-        } else {
-            localStorage.removeItem(STORAGE_KEY);
-        }
-    }
-
-    // 從 LocalStorage 載入連線資訊
-    function loadConnectionInfo() {
-        const savedInfo = localStorage.getItem(STORAGE_KEY);
-        
-        if (savedInfo) {
-            try {
-                const connectionInfo = JSON.parse(savedInfo);
-                
-                if (connectionInfo.serverName) {
-                    document.getElementById('serverName').value = connectionInfo.serverName;
-                }
-                
-                if (connectionInfo.authType) {
-                    document.getElementById('authTypeSelect').value = connectionInfo.authType;
-                }
-                
-                if (connectionInfo.username) {
-                    document.getElementById('username').value = connectionInfo.username;
-                }
-                
-                if (connectionInfo.trustCertificate !== undefined) {
-                    document.getElementById('trustCertificate').checked = connectionInfo.trustCertificate;
-                }
-                
-                toggleAuthFields();
-            } catch (e) {
-                console.error('載入連線資訊失敗:', e);
-            }
-        }
-    }
-
-    // 清除連線資訊
-    function clearConnectionInfo() {
-        if (confirm('Clear all saved connection settings?')) {
-            localStorage.removeItem(STORAGE_KEY);
-            document.getElementById('serverName').value = '';
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-            document.getElementById('authTypeSelect').value = 'Windows';
-            document.getElementById('trustCertificate').checked = true;
-            toggleAuthFields();
-            showMessage('✓ Connection memory cleared', 'success');
-        }
-    }
-
-    // 切換驗證方式
-    function toggleAuthFields() {
-        const authType = document.getElementById('authTypeSelect').value;
-        const sqlAuthFields = document.getElementById('sqlAuthFields');
-        
-        if (authType === 'SA') {
-            sqlAuthFields.style.display = 'block';
-        } else {
-            sqlAuthFields.style.display = 'none';
-        }
-    }
-</script>
-
-@* 添加 CSRF Token 支援 *@
-@Html.AntiForgeryToken()
