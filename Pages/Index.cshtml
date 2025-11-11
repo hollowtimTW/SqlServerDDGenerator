@@ -10,11 +10,8 @@
         DATA DICTIONARY GENERATOR
     </h1>
 
-    <!-- 訊息提示區 -->
-    <div id="messageBox" class="alert d-none alert-dismissible fade show" role="alert">
-        <span id="messageText"></span>
-        <button type="button" class="btn-close" onclick="hideMessage()"></button>
-    </div>
+    <!-- 訊息提示區（改為 Toast 風格） -->
+    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;"></div>
 
     <!-- 連線設定 -->
     <div class="card mb-3" id="connectionCard">
@@ -24,8 +21,12 @@
         <div class="card-body" id="connectionForm">
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label class="form-label"><i class="bi bi-server me-1"></i>Server Instance</label>
-                    <input type="text" class="form-control" id="serverName" placeholder="localhost / 127.0.0.1 / .\SQLEXPRESS" required />
+                    <label class="form-label">
+                        <i class="bi bi-server me-1"></i>Server Instance
+                        <i class="bi bi-info-circle ms-1" style="font-size: 0.75rem; color: var(--accent-color); cursor: help;" 
+                           title="Format: localhost / 127.0.0.1,1433 / server\instance&#13;You can specify port: localhost,1433"></i>
+                    </label>
+                    <input type="text" class="form-control" id="serverName" placeholder="localhost / 127.0.0.1,1433 / server\instance" required />
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -184,7 +185,109 @@
 </div>
 
 <style>
-    /* 移除不需要的 Markdown 樣式，保留基本樣式 */
+    /* Toast 通知樣式 - 精緻小巧版 + 效能優化 */
+    .toast-notification {
+        background: linear-gradient(135deg, rgba(30, 33, 57, 0.98), rgba(42, 46, 75, 0.98));
+        backdrop-filter: blur(20px);
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        margin-bottom: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        max-width: 320px;
+        min-width: 240px;
+        position: relative;
+        overflow: hidden;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+    }
+
+    .toast-notification::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--toast-color), transparent);
+    }
+
+    .toast-notification.success {
+        --toast-color: #81c995;
+    }
+
+    .toast-notification.danger {
+        --toast-color: #f48771;
+    }
+
+    .toast-notification.warning {
+        --toast-color: #ffd166;
+    }
+
+    .toast-notification.info {
+        --toast-color: var(--accent-color);
+    }
+
+    .toast-content {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        color: #e8eaed;
+        font-size: 0.75rem;
+        letter-spacing: 0.3px;
+        font-weight: 500;
+    }
+
+    .toast-icon {
+        margin-right: 8px;
+        font-size: 0.95rem;
+        color: var(--toast-color);
+        filter: drop-shadow(0 0 4px var(--toast-color));
+    }
+
+    .toast-close {
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 2px 6px;
+        margin-left: 0.75rem;
+        transition: all 0.2s;
+        border-radius: 4px;
+        line-height: 1;
+    }
+
+    .toast-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    @@keyframes slideInRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @@keyframes fadeOut {
+        to {
+            opacity: 0;
+            transform: translateX(400px);
+        }
+    }
+
+    .toast-notification.hiding {
+        animation: fadeOut 0.3s ease-out forwards;
+    }
 </style>
 
 <script>
@@ -200,22 +303,50 @@
         toggleAuthFields();
     });
 
-    // 顯示訊息
-    function showMessage(message, type) {
-        const messageBox = document.getElementById('messageBox');
-        const messageText = document.getElementById('messageText');
+    // 顯示 Toast 訊息
+    function showMessage(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
         
-        messageBox.className = `alert alert-${type} alert-dismissible fade show`;
-        messageText.textContent = message;
-        messageBox.classList.remove('d-none');
+        // 建立 Toast 元素
+        const toast = document.createElement('div');
+        toast.className = `toast-notification ${type}`;
         
-        // 5秒後自動隱藏
-        setTimeout(() => hideMessage(), 5000);
+        // 圖示對應
+        const icons = {
+            success: 'bi-check-circle-fill',
+            danger: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+        
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="bi ${icons[type]} toast-icon"></i>
+                <span>${message}</span>
+            </div>
+            <button class="toast-close" onclick="closeToast(this)">×</button>
+        `;
+        
+        container.appendChild(toast);
+        
+        // 5秒後自動移除
+        setTimeout(() => {
+            closeToast(toast.querySelector('.toast-close'));
+        }, 5000);
     }
 
-    // 隱藏訊息
+    // 關閉 Toast
+    function closeToast(button) {
+        const toast = button.parentElement;
+        toast.classList.add('hiding');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }
+
+    // 隱藏訊息（保留向後相容）
     function hideMessage() {
-        document.getElementById('messageBox').classList.add('d-none');
+        // 不再需要，保留空函數避免錯誤
     }
 
     // 收合連線表單
@@ -237,7 +368,7 @@
         // 重置其他區域
         document.getElementById('databaseSelect').value = '';
         document.getElementById('databaseSelect').disabled = true;
-        document.getElementById('tablesContainer').innerHTML = '<p class="text-muted">請先選擇資料庫</p>';
+        document.getElementById('tablesContainer').innerHTML = '<p class="text-muted"><i class="bi bi-info-circle me-1"></i>Select a database to load tables</p>';
         document.getElementById('btnGenerate').disabled = true;
         document.getElementById('resultCard').classList.add('d-none');
     }

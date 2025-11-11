@@ -41,7 +41,7 @@ public class IndexModel : PageModel
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "連線失敗，請檢查連線資訊。"
+                    message = "Connection failed. Please check your credentials."
                 });
             }
         }
@@ -50,7 +50,7 @@ public class IndexModel : PageModel
             return new JsonResult(new
             {
                 success = false,
-                message = $"錯誤: {ex.Message}"
+                message = $"Error: {ex.Message}"
             });
         }
     }
@@ -72,7 +72,7 @@ public class IndexModel : PageModel
             return new JsonResult(new
             {
                 success = true,
-                message = $"已載入 {tables.Count} 個資料表",
+                message = $"Loaded {tables.Count} tables",
                 tables = tables.Select(t => new { t.SchemaName, t.TableName, t.FullName }).ToList()
             });
         }
@@ -81,7 +81,7 @@ public class IndexModel : PageModel
             return new JsonResult(new
             {
                 success = false,
-                message = $"錯誤: {ex.Message}"
+                message = $"Error: {ex.Message}"
             });
         }
     }
@@ -114,7 +114,7 @@ public class IndexModel : PageModel
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "請至少選擇一個資料表。"
+                    message = "Please select at least one table."
                 });
             }
 
@@ -133,7 +133,7 @@ public class IndexModel : PageModel
             return new JsonResult(new
             {
                 success = true,
-                message = $"成功產生 {selectedCount} 個資料表的 DD 文件！",
+                message = $"Successfully generated DD for {selectedCount} tables!",
                 markdown = markdown,
                 databaseName = request.DatabaseName,
                 fileName = $"{request.DatabaseName}_DD_{DateTime.Now:yyyyMMdd_HHmmss}.md"
@@ -144,7 +144,7 @@ public class IndexModel : PageModel
             return new JsonResult(new
             {
                 success = false,
-                message = $"錯誤: {ex.Message}"
+                message = $"Error: {ex.Message}"
             });
         }
     }
