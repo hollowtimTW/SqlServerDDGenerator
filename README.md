@@ -109,8 +109,6 @@ SqlServerDDGenerator/
 ├── Pages/
 │   ├── Index.cshtml           # 主頁面 UI
 │   └── Index.cshtml.cs        # 主頁面邏輯
-├── wwwroot/
-│   └── output/                # DD 文件輸出目錄
 └── Program.cs                 # 應用程式進入點
 ```
 
@@ -139,4 +137,14 @@ SqlServerDDGenerator/
 
 ## 作者
 
-SQL Server DD Generator Team
+HollowTim
+
+## 未來規劃
+
+- 🚀 導入 AI 功能：
+ - 利用 AI 自動生成欄位說明（MS_Description）
+ - 智能分析資料表結構，提供最佳化建議
+ - 支援自然語言查詢與互動式資料字典產生
+- 持續優化使用者介面與體驗
+- 增加多語言支援
+- 支援更多資料庫類型
