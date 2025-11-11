@@ -1,7 +1,7 @@
 @page
-@model DDGeneratorModel
+@model ModelGeneratorModel
 @{
-    ViewData["Title"] = "Data Dictionary Generator";
+    ViewData["Title"] = "Model Class Generator";
 }
 
 <div class="container mt-4">
@@ -17,26 +17,38 @@
     <!-- Main Content -->
     <div id="mainContent" class="d-none">
         <h1 class="display-5 mb-4">
-            <i class="bi bi-file-earmark-text-fill me-3"></i>
-            DATA DICTIONARY GENERATOR
+            <i class="bi bi-file-earmark-code-fill me-3"></i>
+            MODEL CLASS GENERATOR
         </h1>
 
-        <!-- Select Database -->
+        <!-- Step 1: Configure -->
         <div class="card mb-3">
             <div class="card-header">
-                <h3><i class="bi bi-database me-2"></i>STEP 1: SELECT DATABASE</h3>
+                <h3><i class="bi bi-gear-fill me-2"></i>STEP 1: CONFIGURE</h3>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label"><i class="bi bi-collection me-1"></i>Available Databases (Permission Filtered)</label>
-                    <select class="form-select" id="databaseSelect" onchange="loadTables()">
-                        <option value="">-- Loading databases... --</option>
-                    </select>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-database me-1"></i>Database
+                        </label>
+                        <select class="form-select" id="databaseSelect" onchange="loadTables()">
+                            <option value="">-- Select a database --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-code-square me-1"></i>Namespace
+                        </label>
+                        <input type="text" class="form-control" id="namespaceInput" 
+                               placeholder="e.g., MyProject.Models" 
+                               value="MyProject.Models">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Select Tables -->
+        <!-- Step 2: Select Tables -->
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3><i class="bi bi-table me-2"></i>STEP 2: SELECT TABLES</h3>
@@ -75,7 +87,7 @@
                         <small id="searchHint" class="text-muted"></small>
                     </div>
                 </div>
-                
+
                 <div id="tablesContainer" class="row">
                     <p class="text-muted">
                         <i class="bi bi-info-circle me-1"></i>
@@ -83,10 +95,10 @@
                     </p>
                 </div>
                 <div class="mt-3">
-                    <button type="button" class="btn btn-success" id="btnGenerate" onclick="generateDD()" disabled>
+                    <button type="button" class="btn btn-success" id="btnGenerate" onclick="generateModels()" disabled>
                         <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerGenerate"></span>
-                        <i class="bi bi-file-earmark-text me-1"></i>
-                        GENERATE DICTIONARY
+                        <i class="bi bi-file-earmark-zip me-1"></i>
+                        GENERATE MODEL CLASSES
                     </button>
                     <button type="button" class="btn btn-secondary ms-2" onclick="resetAll()">
                         <i class="bi bi-arrow-counterclockwise me-1"></i>
@@ -106,7 +118,7 @@
                 
                 <div class="mb-4">
                     <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-file-earmark-code me-2" style="color: rgba(255, 255, 255, 0.7);"></i>
+                        <i class="bi bi-file-earmark-zip me-2" style="color: rgba(255, 255, 255, 0.7);"></i>
                         <span style="font-size: 0.8rem; color: rgba(255, 255, 255, 0.7);">Filename:</span>
                     </div>
                     <input type="text" class="form-control" id="resultFileName" 
@@ -114,9 +126,9 @@
                 </div>
                 
                 <div class="d-grid gap-2 d-md-flex">
-                    <button type="button" class="btn btn-primary btn-lg" onclick="downloadMarkdown()">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="downloadZip()">
                         <i class="bi bi-download me-2"></i>
-                        DOWNLOAD .MD FILE
+                        DOWNLOAD ZIP FILE
                     </button>
                     <button type="button" class="btn btn-outline-secondary" onclick="resetAll()" style="background: rgba(255, 255, 255, 0.1); color: white; border-color: rgba(255, 255, 255, 0.3);">
                         <i class="bi bi-plus-circle me-1"></i>
@@ -215,7 +227,7 @@
 </style>
 
 <script>
-    let currentMarkdownContent = '';
+    let currentZipData = null;
     let currentFileName = '';
 
     document.addEventListener('DOMContentLoaded', async function() {
@@ -380,9 +392,6 @@
                 selectedCount++;
             }
             
-            // 修正邏輯：
-            // 1. 沒有搜尋條件 → 全部顯示
-            // 2. 有搜尋條件 → 符合搜尋 OR 已勾選 = 顯示
             if (!searchTerm || isMatch || isChecked) {
                 item.style.display = '';
                 visibleCount++;
@@ -393,7 +402,6 @@
         
         updateTableCounts(tableItems.length, visibleCount, selectedCount);
         
-        // Update search hint
         const searchHint = document.getElementById('searchHint');
         if (searchTerm && visibleCount === 0) {
             searchHint.textContent = 'No matches';
@@ -419,7 +427,6 @@
     }
 
     function updateSelectedCount() {
-        // Re-filter to handle unchecked items that don't match search
         filterTables();
     }
 
@@ -428,21 +435,29 @@
         filterTables();
     }
 
-    async function generateDD() {
+    async function generateModels() {
         const btn = document.getElementById('btnGenerate');
         const spinner = document.getElementById('spinnerGenerate');
         
         const selectedTables = Array.from(document.querySelectorAll('.table-checkbox:checked'))
             .map(cb => cb.value);
 
+        const namespace = document.getElementById('namespaceInput').value.trim();
+
         if (selectedTables.length === 0) {
             showMessage('⚠️ Please select at least one table', 'danger');
             return;
         }
 
+        if (!namespace) {
+            showMessage('⚠️ Please enter a namespace', 'danger');
+            return;
+        }
+
         const requestData = {
             databaseName: document.getElementById('databaseSelect').value,
-            selectedTables: selectedTables
+            selectedTables: selectedTables,
+            namespace: namespace
         };
 
         btn.disabled = true;
@@ -463,7 +478,7 @@
             if (result.success) {
                 showMessage('✓ ' + result.message, 'success');
                 
-                currentMarkdownContent = result.markdown;
+                currentZipData = result.zipData;
                 currentFileName = result.fileName;
                 
                 document.getElementById('resultMessage').textContent = result.message;
@@ -481,12 +496,18 @@
         }
     }
 
-    function downloadMarkdown() {
+    function downloadZip() {
         const fileName = document.getElementById('resultFileName').value || currentFileName;
-        const blob = new Blob([currentMarkdownContent], { type: 'text/markdown;charset=utf-8' });
+        const byteCharacters = atob(currentZipData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/zip' });
+        
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        
         a.href = url;
         a.download = fileName;
         a.style.display = 'none';
@@ -498,7 +519,7 @@
             URL.revokeObjectURL(url);
         }, 100);
         
-        showMessage('⬇ Downloading file...', 'success');
+        showMessage('⬇ Downloading ZIP file...', 'success');
     }
 
     function selectAllTables() {
@@ -515,6 +536,7 @@
 
     function resetAll() {
         document.getElementById('databaseSelect').value = '';
+        document.getElementById('namespaceInput').value = 'MyProject.Models';
         document.getElementById('tableSearchInput').value = '';
         document.getElementById('tableSearchInput').disabled = true;
         document.getElementById('tablesContainer').innerHTML = '<p class="text-muted"><i class="bi bi-info-circle me-1"></i>Select a database to load tables</p>';

@@ -191,6 +191,25 @@ public class SqlServerService
         return columns;
     }
 
+    public async Task<List<ColumnInfo>> GetTableSchemaAsync(string serverName, string databaseName, string tableFullName, string authType, string username, string password, bool trustServerCertificate = true)
+    {
+        // Parse schema and table name
+        string schemaName, tableName;
+        if (tableFullName.Contains('.'))
+        {
+            var parts = tableFullName.Split('.');
+            schemaName = parts[0];
+            tableName = parts[1];
+        }
+        else
+        {
+            schemaName = "dbo";
+            tableName = tableFullName;
+        }
+
+        return await GetColumnsAsync(serverName, databaseName, schemaName, tableName, authType, username, password, trustServerCertificate);
+    }
+
     public async Task<string> GenerateMarkdownAsync(string serverName, string databaseName, List<TableInfo> selectedTables, string authType, string username, string password, bool trustServerCertificate = true)
     {
         var sb = new StringBuilder();

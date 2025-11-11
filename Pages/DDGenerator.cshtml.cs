@@ -18,55 +18,27 @@ public class DDGeneratorModel : PageModel
     {
     }
 
-    // AJAX API: 測試連線並取得資料庫列表
-    public async Task<IActionResult> OnPostTestConnectionAsync([FromBody] Models.ConnectionInfo connectionInfo)
-    {
-        try
-        {
-            var connectionString = _sqlService.BuildConnectionString(connectionInfo);
-            var isValid = await _sqlService.TestConnectionAsync(connectionString);
-
-            if (isValid)
-            {
-                var databases = await _sqlService.GetDatabasesAsync(connectionString);
-                return new JsonResult(new
-                {
-                    success = true,
-                    message = "連線成功！",
-                    databases = databases
-                });
-            }
-            else
-            {
-                return new JsonResult(new
-                {
-                    success = false,
-                    message = "Connection failed. Please check your credentials."
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            return new JsonResult(new
-            {
-                success = false,
-                message = $"Error: {ex.Message}"
-            });
-        }
-    }
-
-    // AJAX API: 取得資料表列表
     public async Task<IActionResult> OnPostGetTablesAsync([FromBody] DatabaseRequest request)
     {
         try
         {
+            var connectionInfo = GetConnectionFromSession();
+            if (connectionInfo == null)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "No active connection. Please connect on the home page first."
+                });
+            }
+
             var tables = await _sqlService.GetTablesAsync(
-                request.ServerName,
+                connectionInfo.ServerName,
                 request.DatabaseName,
-                request.AuthType,
-                request.Username ?? "",
-                request.Password ?? "",
-                request.TrustServerCertificate
+                connectionInfo.AuthType,
+                connectionInfo.Username ?? "",
+                connectionInfo.Password ?? "",
+                connectionInfo.TrustServerCertificate
             );
 
             return new JsonResult(new
@@ -86,18 +58,27 @@ public class DDGeneratorModel : PageModel
         }
     }
 
-    // AJAX API: 產生 DD 文件
     public async Task<IActionResult> OnPostGenerateAsync([FromBody] GenerateRequest request)
     {
         try
         {
+            var connectionInfo = GetConnectionFromSession();
+            if (connectionInfo == null)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "No active connection. Please connect on the home page first."
+                });
+            }
+
             var allTables = await _sqlService.GetTablesAsync(
-                request.ServerName,
+                connectionInfo.ServerName,
                 request.DatabaseName,
-                request.AuthType,
-                request.Username ?? "",
-                request.Password ?? "",
-                request.TrustServerCertificate
+                connectionInfo.AuthType,
+                connectionInfo.Username ?? "",
+                connectionInfo.Password ?? "",
+                connectionInfo.TrustServerCertificate
             );
 
             foreach (var table in allTables)
@@ -119,16 +100,14 @@ public class DDGeneratorModel : PageModel
             }
 
             var markdown = await _sqlService.GenerateMarkdownAsync(
-                request.ServerName,
+                connectionInfo.ServerName,
                 request.DatabaseName,
                 allTables,
-                request.AuthType,
-                request.Username ?? "",
-                request.Password ?? "",
-                request.TrustServerCertificate
+                connectionInfo.AuthType,
+                connectionInfo.Username ?? "",
+                connectionInfo.Password ?? "",
+                connectionInfo.TrustServerCertificate
             );
-
-            // 不再儲存到伺服器，只回傳給前端下載
 
             return new JsonResult(new
             {
@@ -148,25 +127,81 @@ public class DDGeneratorModel : PageModel
             });
         }
     }
+
+    public async Task<IActionResult> OnPostGetDatabasesAsync()
+    {
+        try
+        {
+            var connectionInfo = GetConnectionFromSession();
+            if (connectionInfo == null)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "No active connection. Please connect on the home page first."
+                });
+            }
+
+            var connectionString = _sqlService.BuildConnectionString(connectionInfo);
+            var databases = await _sqlService.GetDatabasesAsync(connectionString);
+
+            return new JsonResult(new
+            {
+                success = true,
+                databases = databases
+            });
+        }
+        catch (Exception ex)
+        {
+            return new JsonResult(new
+            {
+                success = false,
+                message = $"Error: {ex.Message}"
+            });
+        }
+    }
+
+    private Models.ConnectionInfo? GetConnectionFromSession()
+    {
+        var connectionJson = HttpContext.Session.GetString("ConnectionInfo");
+        if (string.IsNullOrEmpty(connectionJson))
+            return null;
+
+        return System.Text.Json.JsonSerializer.Deserialize<Models.ConnectionInfo>(connectionJson);
+    }
+
+    public IActionResult OnPostGetConnectionStatusAsync()
+    {
+        var connectionJson = HttpContext.Session.GetString("ConnectionInfo");
+        if (string.IsNullOrEmpty(connectionJson))
+        {
+            return new JsonResult(new { isConnected = false });
+        }
+
+        try
+        {
+            var connectionInfo = System.Text.Json.JsonSerializer.Deserialize<Models.ConnectionInfo>(connectionJson);
+            return new JsonResult(new
+            {
+                isConnected = true,
+                serverName = connectionInfo?.ServerName ?? "",
+                authType = connectionInfo?.AuthType ?? "Windows"
+            });
+        }
+        catch
+        {
+            return new JsonResult(new { isConnected = false });
+        }
+    }
 }
 
 public class DatabaseRequest
 {
-    public string ServerName { get; set; } = string.Empty;
     public string DatabaseName { get; set; } = string.Empty;
-    public string AuthType { get; set; } = "Windows";
-    public string? Username { get; set; }
-    public string? Password { get; set; }
-    public bool TrustServerCertificate { get; set; } = true;
 }
 
 public class GenerateRequest
 {
-    public string ServerName { get; set; } = string.Empty;
     public string DatabaseName { get; set; } = string.Empty;
-    public string AuthType { get; set; } = "Windows";
-    public string? Username { get; set; }
-    public string? Password { get; set; }
-    public bool TrustServerCertificate { get; set; } = true;
     public List<string> SelectedTables { get; set; } = new();
 }

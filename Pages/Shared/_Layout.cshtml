@@ -1,4 +1,18 @@
-﻿<!DOCTYPE html>
+﻿@using SqlServerDDGenerator.Models
+@{
+    // Get connection info from session
+    var connectionJson = Context.Session.GetString("ConnectionInfo");
+    ConnectionInfo? connectionInfo = null;
+    if (!string.IsNullOrEmpty(connectionJson))
+    {
+        try
+        {
+            connectionInfo = System.Text.Json.JsonSerializer.Deserialize<ConnectionInfo>(connectionJson);
+        }
+        catch { }
+    }
+}
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="utf-8" />
@@ -9,6 +23,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/SqlServerDDGenerator.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
     <style>
         :root {
             --bg-primary: #0a0e27;
@@ -68,6 +83,28 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
             letter-spacing: 0.5px;
+        }
+
+        #navConnectionInfo {
+            background: rgba(30, 33, 57, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        #navConnectionInfo:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 12px rgba(138, 180, 248, 0.2);
+        }
+
+        #navHomeBtn {
+            border-radius: 6px;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
         }
 
         .container {
@@ -414,8 +451,32 @@
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">
                     <i class="bi bi-database-fill-gear me-2"></i>
-                    <strong>SQL DD GENERATOR</strong>
+                    <strong>SQL LAZY TOOLS</strong>
                 </a>
+                
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <!-- Connection Info Display -->
+                    @if (connectionInfo != null)
+                    {
+                        <div id="navConnectionInfo">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2" style="font-size: 0.7rem;">
+                                    <i class="bi bi-database-fill-check me-1"></i>CONNECTED
+                                </span>
+                                <div style="font-size: 0.75rem; line-height: 1.3;">
+                                    <div class="text-primary" id="navServerName" style="font-weight: 600;">@connectionInfo.ServerName</div>
+                                    <div class="text-muted" id="navAuthType" style="font-size: 0.7rem;">@(connectionInfo.AuthType == "Windows" ? "Windows Auth" : "SQL Auth")</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                    <!-- Home Button -->
+                    <a href="/" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-house-fill me-1"></i>
+                        HOME
+                    </a>
+                </div>
             </div>
         </nav>
     </header>

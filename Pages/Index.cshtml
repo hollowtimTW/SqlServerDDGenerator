@@ -8,9 +8,104 @@
     <div class="text-center mb-5">
         <h1 class="display-4 mb-3">
             <i class="bi bi-database-fill-gear me-3"></i>
-            SQL SERVER TOOLS
+            SQL LAZY TOOLS
         </h1>
         <p class="lead text-muted">選擇一個工具開始使用 / Select a tool to get started</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;"></div>
+
+    <!-- Database Connection Card -->
+    <div class="card mb-4" id="connectionCard">
+        <div class="card-header">
+            <h3><i class="bi bi-plug-fill me-2"></i>DATABASE CONNECTION</h3>
+        </div>
+        
+        <!-- Connected status (shown when session exists) -->
+        <div class="card-body @(Model.IsConnected ? "" : "d-none")" id="connectionSummary">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="badge bg-success me-2">
+                        <i class="bi bi-check-circle-fill me-1"></i>CONNECTED
+                    </span>
+                    <strong id="connectedServer">@Model.ConnectedServer</strong>
+                    <span class="text-muted ms-2" id="connectedAuth">(@(Model.ConnectedAuthType == "Windows" ? "Windows Auth" : "SQL Auth"))</span>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showConnectionForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        RECONFIGURE
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Connection form -->
+        <div class="card-body @(Model.IsConnected ? "d-none" : "")" id="connectionForm">
+        
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-server me-1"></i>Server Instance
+                        <i class="bi bi-info-circle ms-1" style="font-size: 0.75rem; color: var(--accent-color); cursor: help;" 
+                           title="Format: localhost / 127.0.0.1,1433 / server\instance&#13;You can specify port: localhost,1433"></i>
+                    </label>
+                    <input type="text" class="form-control" id="serverName" placeholder="localhost / 127.0.0.1,1433 / server\instance" required />
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label"><i class="bi bi-shield-lock me-1"></i>Authentication Mode</label>
+                    <select class="form-select" id="authTypeSelect" onchange="toggleAuthFields()">
+                        <option value="Windows">Windows Authentication</option>
+                        <option value="SA">SQL Server Authentication</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="sqlAuthFields" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><i class="bi bi-person-fill me-1"></i>Username</label>
+                        <input type="text" class="form-control" id="username" placeholder="sa" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label"><i class="bi bi-key-fill me-1"></i>Password</label>
+                        <input type="password" class="form-control" id="password" placeholder="••••••••" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="trustCertificate" checked>
+                        <label class="form-check-label" for="trustCertificate">
+                            Trust Server Certificate
+                        </label>
+                        <div class="form-text">Enable for self-signed certificates or dev environments</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="rememberConnection" checked>
+                    <label class="form-check-label" for="rememberConnection">
+                        <i class="bi bi-bookmark-fill me-1"></i>Remember connection settings
+                    </label>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="btnTestConnection" onclick="testConnection()">
+                <span class="spinner-border spinner-border-sm d-none me-2" id="spinnerTest"></span>
+                <i class="bi bi-link-45deg me-1"></i>
+                CONNECT TO SERVER
+            </button>
+            <button type="button" class="btn btn-secondary ms-2" onclick="clearConnectionInfo()">
+                <i class="bi bi-trash3 me-1"></i>
+                CLEAR MEMORY
+            </button>
+        </div>
     </div>
 
     <!-- Features Grid -->
@@ -28,6 +123,32 @@
                     </p>
                     <div class="mt-3">
                         <a href="/DDGenerator" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            開始使用
+                        </a>
+                    </div>
+                </div>
+                <div class="feature-status">
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle-fill me-1"></i>可用
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Model Class Generator Card -->
+        <div class="col-md-6 col-lg-4">
+            <div class="feature-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="feature-icon mb-3">
+                        <i class="bi bi-file-earmark-code-fill"></i>
+                    </div>
+                    <h3 class="card-title h5 mb-3">Model Class Generator</h3>
+                    <p class="card-text text-muted flex-grow-1">
+                        自動產生 C# Model 類別檔案，支援批量選擇資料表，自動對應資料型別，結果打包成 ZIP 下載。
+                    </p>
+                    <div class="mt-3">
+                        <a href="/ModelGenerator" class="btn btn-primary w-100">
                             <i class="bi bi-arrow-right-circle me-2"></i>
                             開始使用
                         </a>
@@ -294,6 +415,106 @@
         }
     }
 
+    /* Toast Notification Styles */
+    .toast-notification {
+        background: linear-gradient(135deg, rgba(30, 33, 57, 0.98), rgba(42, 46, 75, 0.98));
+        backdrop-filter: blur(20px);
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        margin-bottom: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        max-width: 320px;
+        min-width: 240px;
+        position: relative;
+        overflow: hidden;
+        will-change: transform, opacity;
+        transform: translateZ(0);
+    }
+
+    .toast-notification::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--toast-color), transparent);
+    }
+
+    .toast-notification.success { --toast-color: #81c995; }
+    .toast-notification.danger { --toast-color: #f48771; }
+    .toast-notification.warning { --toast-color: #ffd166; }
+    .toast-notification.info { --toast-color: var(--accent-color); }
+
+    .toast-content {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        color: #e8eaed;
+        font-size: 0.75rem;
+        letter-spacing: 0.3px;
+        font-weight: 500;
+    }
+
+    .toast-icon {
+        margin-right: 8px;
+        font-size: 0.95rem;
+        color: var(--toast-color);
+        filter: drop-shadow(0 0 4px var(--toast-color));
+    }
+
+    .toast-close {
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 2px 6px;
+        margin-left: 0.75rem;
+        transition: all 0.2s;
+        border-radius: 4px;
+        line-height: 1;
+    }
+
+    .toast-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    @@keyframes slideInRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @@keyframes fadeOut {
+        to {
+            opacity: 0;
+            transform: translateX(400px);
+        }
+    }
+
+    .toast-notification.hiding {
+        animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    #connectionSummary {
+        background: linear-gradient(135deg, rgba(129, 201, 149, 0.1) 0%, rgba(95, 158, 160, 0.1) 100%);
+        border: 1px solid rgba(129, 201, 149, 0.3);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+    }
+
     /* Responsive */
     @@media (max-width: 768px) {
         .display-4 {
@@ -307,3 +528,209 @@
         }
     }
 </style>
+
+<script>
+    const STORAGE_KEY = 'sqlServerConnectionInfo';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadConnectionInfo();
+        toggleAuthFields();
+    });
+
+    function showMessage(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast-notification ${type}`;
+        
+        const icons = {
+            success: 'bi-check-circle-fill',
+            danger: 'bi-x-circle-fill',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-circle-fill'
+        };
+        
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="bi ${icons[type]} toast-icon"></i>
+                <span>${message}</span>
+            </div>
+            <button class="toast-close" onclick="closeToast(this)">×</button>
+        `;
+        
+        container.appendChild(toast);
+        setTimeout(() => closeToast(toast.querySelector('.toast-close')), 5000);
+    }
+
+    function closeToast(button) {
+        const toast = button.parentElement;
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+    }
+
+    function collapseConnectionForm() {
+        document.getElementById('connectionForm').classList.add('d-none');
+        document.getElementById('connectionSummary').classList.remove('d-none');
+        
+        const authType = document.getElementById('authTypeSelect').value;
+        document.getElementById('connectedServer').textContent = document.getElementById('serverName').value;
+        document.getElementById('connectedAuth').textContent = `(${authType === 'Windows' ? 'Windows Auth' : 'SQL Auth'})`;
+    }
+
+    function showConnectionForm() {
+        document.getElementById('connectionForm').classList.remove('d-none');
+        document.getElementById('connectionSummary').classList.add('d-none');
+    }
+
+    async function testConnection() {
+        const btn = document.getElementById('btnTestConnection');
+        const spinner = document.getElementById('spinnerTest');
+        
+        const connectionInfo = {
+            serverName: document.getElementById('serverName').value.trim(),
+            authType: document.getElementById('authTypeSelect').value,
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value,
+            trustServerCertificate: document.getElementById('trustCertificate').checked
+        };
+
+        if (!connectionInfo.serverName) {
+            showMessage('⚠️ Server name is required', 'danger');
+            return;
+        }
+
+        if (connectionInfo.authType === 'SA' && !connectionInfo.username) {
+            showMessage('⚠️ Username is required for SQL Authentication', 'danger');
+            return;
+        }
+
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const response = await fetch('?handler=TestConnection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify(connectionInfo)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showMessage('✓ Connection successful! You can now use the tools.', 'success');
+                collapseConnectionForm();
+                saveConnectionInfo();
+                
+                // Update connection status display
+                updateConnectionStatus(connectionInfo);
+            } else {
+                showMessage('✗ ' + result.message, 'danger');
+            }
+        } catch (error) {
+            showMessage('✗ Connection failed: ' + error.message, 'danger');
+            console.error('Error:', error);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    function saveConnectionInfo() {
+        const rememberCheckbox = document.getElementById('rememberConnection');
+        
+        if (rememberCheckbox && rememberCheckbox.checked) {
+            const connectionInfo = {
+                serverName: document.getElementById('serverName').value,
+                authType: document.getElementById('authTypeSelect').value,
+                username: document.getElementById('username').value,
+                trustCertificate: document.getElementById('trustCertificate').checked
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionInfo));
+        } else {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    }
+
+    function loadConnectionInfo() {
+        const savedInfo = localStorage.getItem(STORAGE_KEY);
+        
+        if (savedInfo) {
+            try {
+                const connectionInfo = JSON.parse(savedInfo);
+                if (connectionInfo.serverName) document.getElementById('serverName').value = connectionInfo.serverName;
+                if (connectionInfo.authType) document.getElementById('authTypeSelect').value = connectionInfo.authType;
+                if (connectionInfo.username) document.getElementById('username').value = connectionInfo.username;
+                if (connectionInfo.trustCertificate !== undefined) document.getElementById('trustCertificate').checked = connectionInfo.trustCertificate;
+                toggleAuthFields();
+            } catch (e) {
+                console.error('載入連線資訊失敗:', e);
+            }
+        }
+    }
+
+    function clearConnectionInfo() {
+        if (confirm('Clear all saved connection settings?')) {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('serverName').value = '';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('authTypeSelect').value = 'Windows';
+            document.getElementById('trustCertificate').checked = true;
+            toggleAuthFields();
+            showConnectionForm();
+            showMessage('✓ Connection memory cleared', 'success');
+        }
+    }
+
+    function toggleAuthFields() {
+        const authType = document.getElementById('authTypeSelect').value;
+        const sqlAuthFields = document.getElementById('sqlAuthFields');
+        sqlAuthFields.style.display = authType === 'SA' ? 'block' : 'none';
+    }
+
+    function updateConnectionStatus(connectionInfo) {
+        // Update connection summary
+        const connectedStatus = document.getElementById('connectedStatus');
+        const connectedServer = document.getElementById('connectedServer');
+        const connectedAuth = document.getElementById('connectedAuth');
+        
+        if (connectedStatus && connectedServer && connectedAuth) {
+            connectedStatus.classList.remove('d-none');
+            connectedServer.textContent = connectionInfo.serverName;
+            connectedAuth.textContent = `(${connectionInfo.authType === 'Windows' ? 'Windows Auth' : 'SQL Auth'})`;
+        }
+        
+        // Hide connection form
+        const connectionForm = document.getElementById('connectionForm');
+        if (connectionForm) {
+            connectionForm.classList.add('d-none');
+        }
+    }
+
+    async function disconnectSession() {
+        if (confirm('Are you sure you want to disconnect? You will need to reconnect to use the tools.')) {
+            try {
+                const response = await fetch('?handler=Disconnect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showMessage('✓ Disconnected successfully', 'success');
+                    // Show connection form again
+                    showConnectionForm();
+                }
+            } catch (error) {
+                showMessage('✗ Error disconnecting: ' + error.message, 'danger');
+            }
+        }
+    }
+</script>
+
+@Html.AntiForgeryToken()
