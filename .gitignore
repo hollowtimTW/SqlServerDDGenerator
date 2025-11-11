@@ -1,0 +1,6 @@
+wwwroot/output/*.md
+bin/
+obj/
+.vs/
+*.user
+*.suo

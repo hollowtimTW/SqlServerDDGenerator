@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - SQL Server DD Generator</title>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/SqlServerDDGenerator.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151932;
+            --bg-tertiary: #1e2139;
+            --bg-card: rgba(30, 33, 57, 0.6);
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --text-muted: #5f6368;
+            --border-color: rgba(138, 180, 248, 0.15);
+            --accent-color: #8ab4f8;
+            --accent-hover: #aac7fa;
+            --accent-glow: rgba(138, 180, 248, 0.4);
+            --success-color: #81c995;
+            --success-glow: rgba(129, 201, 149, 0.3);
+            --danger-color: #f28b82;
+            --warning-color: #fdd663;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #81c995 0%, #5f9ea0 100%);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.08) 0%, transparent 50%);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(21, 25, 50, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .navbar-brand {
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.5px;
+        }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 2rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* 卡片樣式 */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 8px 32px rgba(138, 180, 248, 0.15);
+        }
+
+        .card-header {
+            background: transparent;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            letter-spacing: 0.3px;
+        }
+
+        .card-header h3 {
+            font-size: 0.95rem;
+            margin: 0;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* 表單控制項 */
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            padding: 0.65rem 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            color: var(--text-primary);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .form-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* 按鈕樣式 */
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            padding: 0.65rem 1.5rem;
+            transition: all 0.2s ease;
+            border: none;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 12px rgba(129, 201, 149, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(129, 201, 149, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--accent-color);
+        }
+
+        .btn-outline-primary {
+            background: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-outline-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-outline-secondary:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--accent-color);
+        }
+
+        .btn-lg {
+            padding: 0.85rem 2rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.9rem;
+            font-size: 0.75rem;
+        }
+
+        /* 徽章 */
+        .badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.75rem;
+            letter-spacing: 0.3px;
+        }
+
+        .badge.bg-success {
+            background: var(--gradient-success) !important;
+            box-shadow: 0 2px 8px var(--success-glow);
+        }
+
+        /* 警告框 */
+        .alert {
+            border-radius: 12px;
+            border: 1px solid;
+            font-size: 0.85rem;
+            padding: 1rem 1.25rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .alert-success {
+            background: rgba(129, 201, 149, 0.1);
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .alert-danger {
+            background: rgba(242, 139, 130, 0.1);
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .alert-info {
+            background: rgba(138, 180, 248, 0.1);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .alert-warning {
+            background: rgba(253, 214, 99, 0.1);
+            border-color: var(--warning-color);
+            color: var(--warning-color);
+        }
+
+        /* 表單檢查框 */
+        .form-check-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            width: 1.1em;
+            height: 1.1em;
+        }
+
+        .form-check-input:checked {
+            background: var(--gradient-primary);
+            border-color: var(--accent-color);
+        }
+
+        .form-check-label {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-left: 0.5rem;
+        }
+
+        /* 連線狀態摘要 */
+        #connectionSummary {
+            background: linear-gradient(135deg, rgba(129, 201, 149, 0.1) 0%, rgba(95, 158, 160, 0.1) 100%);
+            border: 1px solid rgba(129, 201, 149, 0.3);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+        }
+
+        /* Spinner */
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.15em;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(21, 25, 50, 0.95);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            padding: 1.5rem 0;
+            margin-top: 4rem;
+        }
+
+        /* Code */
+        code {
+            background: var(--bg-tertiary);
+            color: var(--accent-color);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        /* 文字樣式 */
+        .text-muted {
+            color: var(--text-muted) !important;
+            font-size: 0.8rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* 圖示 */
+        .bi {
+            vertical-align: -0.125em;
+        }
+
+        /* 捲軸 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        /* 動畫 */
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            animation: fadeIn 0.5s ease;
+        }
+
+        /* 響應式 */
+        @@media (max-width: 768px) {
+            body {
+                font-size: 13px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">
+                    <i class="bi bi-database-fill-gear me-2"></i>
+                    <strong>SQL DD GENERATOR</strong>
+                </a>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="footer text-center py-3">
+        <div class="container">
+            &copy; 2025 SQL Server DD Generator &middot; Powered by .NET 9
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
